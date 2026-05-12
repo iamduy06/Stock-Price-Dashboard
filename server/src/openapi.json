@@ -1,0 +1,334 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "StockStream API",
+    "version": "1.0.0",
+    "description": "Real-time stock data API supporting VN (Yahoo Finance), US stocks and crypto (Finnhub). Provides OHLCV candles with SQLite caching, live quotes via WebSocket, symbol search, and latency analytics."
+  },
+  "servers": [
+    { "url": "http://localhost:3001", "description": "Local development" }
+  ],
+  "tags": [
+    { "name": "candles",  "description": "OHLCV historical data with SQLite cache" },
+    { "name": "quotes",   "description": "Latest price snapshot" },
+    { "name": "symbols",  "description": "Symbol search and listing" },
+    { "name": "stats",    "description": "Latency analytics and system metrics" },
+    { "name": "health",   "description": "Service health check" }
+  ],
+  "paths": {
+    "/api/candles/{symbol}": {
+      "get": {
+        "tags": ["candles"],
+        "summary": "OHLCV candle data",
+        "description": "Returns candlestick bars for the requested symbol and resolution. Historical bars (>24 h old) are served from SQLite; recent bars are always re-fetched from the upstream API.",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "examples": {
+              "vn":     { "value": "VN:VNM",          "summary": "Vietnamese stock (Yahoo Finance)" },
+              "us":     { "value": "AAPL",             "summary": "US stock (Finnhub)" },
+              "crypto": { "value": "BINANCE:BTCUSDT",  "summary": "Crypto pair (Finnhub)" }
+            }
+          },
+          {
+            "name": "resolution",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["1","5","15","30","60","D"], "default": "D" },
+            "description": "Bar interval: 1/5/15/30/60 minutes or D (daily)"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": { "type": "integer" },
+            "description": "Start of range (Unix seconds UTC). Defaults to now-24h."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": { "type": "integer" },
+            "description": "End of range (Unix seconds UTC). Defaults to now."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of OHLCV candles sorted by time ascending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Candle" }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/quote/{symbol}": {
+      "get": {
+        "tags": ["quotes"],
+        "summary": "Latest price quote",
+        "description": "Returns the most recent price, change, and 24-hour high/low for a symbol.",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "AAPL"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest quote",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Quote" }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/symbols": {
+      "get": {
+        "tags": ["symbols"],
+        "summary": "Full symbol list",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["vn","us","crypto"] },
+            "description": "Filter by market type"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All available symbols",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/SymbolInfo" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/symbols/search": {
+      "get": {
+        "tags": ["symbols"],
+        "summary": "Search symbols by name or ticker",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Case-insensitive search against symbol and name",
+            "example": "vnm"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["vn","us","crypto"] },
+            "description": "Optional market filter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Up to 20 matching symbols",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "maxItems": 20,
+                  "items": { "$ref": "#/components/schemas/SymbolInfo" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/latency": {
+      "get": {
+        "tags": ["stats"],
+        "summary": "API latency percentiles",
+        "description": "Returns P50 / P95 / P99 response times per endpoint, computed from the SQLite request log. Also includes live WebSocket connection metrics.",
+        "parameters": [
+          {
+            "name": "window",
+            "in": "query",
+            "schema": { "type": "integer", "default": 3600, "maximum": 86400 },
+            "description": "Look-back window in seconds (max 24 h)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latency report",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LatencyReport" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/system": {
+      "get": {
+        "tags": ["stats"],
+        "summary": "Runtime system info",
+        "description": "Returns process uptime, Node.js version, and heap memory usage.",
+        "responses": {
+          "200": {
+            "description": "System metrics",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SystemInfo" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "Service is up",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" },
+                    "ts":     { "type": "integer", "example": 1715000000000 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Candle": {
+        "type": "object",
+        "required": ["time","open","high","low","close","volume"],
+        "properties": {
+          "time":   { "type": "integer", "description": "Unix seconds UTC" },
+          "open":   { "type": "number" },
+          "high":   { "type": "number" },
+          "low":    { "type": "number" },
+          "close":  { "type": "number" },
+          "volume": { "type": "number" }
+        }
+      },
+      "Quote": {
+        "type": "object",
+        "properties": {
+          "symbol":         { "type": "string" },
+          "price":          { "type": "number" },
+          "change":         { "type": "number" },
+          "changePercent":  { "type": "number" },
+          "high24h":        { "type": "number" },
+          "low24h":         { "type": "number" },
+          "volume24h":      { "type": "number" },
+          "timestamp":      { "type": "integer" }
+        }
+      },
+      "SymbolInfo": {
+        "type": "object",
+        "required": ["symbol","name","exchange","type"],
+        "properties": {
+          "symbol":   { "type": "string", "example": "VN:VNM" },
+          "name":     { "type": "string", "example": "Vinamilk" },
+          "exchange": { "type": "string", "example": "HOSE" },
+          "type":     { "type": "string", "enum": ["vn","us","crypto"] }
+        }
+      },
+      "LatencyStats": {
+        "type": "object",
+        "properties": {
+          "endpoint": { "type": "string" },
+          "count":    { "type": "integer" },
+          "avg_ms":   { "type": "number" },
+          "p50_ms":   { "type": "number" },
+          "p95_ms":   { "type": "number" },
+          "p99_ms":   { "type": "number" },
+          "min_ms":   { "type": "number" },
+          "max_ms":   { "type": "number" }
+        }
+      },
+      "WsStats": {
+        "type": "object",
+        "properties": {
+          "connected_clients":   { "type": "integer" },
+          "tracked_symbols":     { "type": "integer" },
+          "total_subscriptions": { "type": "integer" },
+          "symbols":             { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "LatencyReport": {
+        "type": "object",
+        "properties": {
+          "window_s":     { "type": "integer" },
+          "generated_at": { "type": "string", "format": "date-time" },
+          "endpoints":    { "type": "array", "items": { "$ref": "#/components/schemas/LatencyStats" } },
+          "websocket":    { "$ref": "#/components/schemas/WsStats" }
+        }
+      },
+      "SystemInfo": {
+        "type": "object",
+        "properties": {
+          "uptime_s":     { "type": "integer" },
+          "node_version": { "type": "string" },
+          "memory": {
+            "type": "object",
+            "properties": {
+              "rss_mb":        { "type": "string" },
+              "heap_used_mb":  { "type": "string" },
+              "heap_total_mb": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Upstream API or server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": { "error": { "type": "string" } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-websocket": {
+    "url": "ws://localhost:3001",
+    "description": "Connect to the root WebSocket endpoint to receive real-time trade updates.",
+    "messages": {
+      "client_subscribe":   { "type": "subscribe",   "symbol": "AAPL" },
+      "client_unsubscribe": { "type": "unsubscribe", "symbol": "AAPL" },
+      "server_connected":   { "type": "connected",   "clientId": "<uuid>", "defaultSymbols": ["AAPL"] },
+      "server_snapshot":    { "type": "snapshot",    "symbol": "AAPL", "data": {} },
+      "server_trade":       { "type": "trade",       "symbol": "AAPL", "data": {} }
+    }
+  }
+}
