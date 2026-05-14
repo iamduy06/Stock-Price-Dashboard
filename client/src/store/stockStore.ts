@@ -46,8 +46,7 @@ export const useStockStore = create<StockStore>((set) => ({
 
   addToWatchlist: (symbol) =>
     set((state) =>
-      state.watchlist.includes(symbol) ? state : { watchlist: [...state.watchlist, symbol] }
-    ),
+      state.watchlist.includes(symbol) ? state : { watchlist: [...state.watchlist, symbol] }),
 
   removeFromWatchlist: (symbol) =>
     set((state) => ({

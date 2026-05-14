@@ -4,15 +4,12 @@ import { getCandlesWithCache, CandleRow } from '../db';
 
 const router = Router();
 
-// ── Input validation ──────────────────────────────────────────────────────────
-
 const VALID_RESOLUTIONS = new Set(['1', '5', '15', '30', '60', 'D']);
-// Only alphanumeric — no path separators, dots, slashes, or encoded sequences
-const VN_TICKER_RE    = /^[A-Z0-9]{1,10}$/;
+const VN_TICKER_RE    = /^[A-Z0-9]{1,10}$/; // blocks path separators and encoded sequences
 const CRYPTO_RE       = /^[A-Z0-9]{1,20}:[A-Z0-9]{1,20}$/;
 const US_TICKER_RE    = /^[A-Z]{1,10}$/;
-const MIN_TS          = 946684800;          // 2000-01-01 UTC
-const MAX_TS          = 4102444800;         // 2100-01-01 UTC
+const MIN_TS          = 946684800;   // 2000-01-01 UTC
+const MAX_TS          = 4102444800;  // 2100-01-01 UTC
 const MAX_RANGE_S     = 5 * 365 * 24 * 3600;
 
 function validateSymbol(raw: string): string | null {
@@ -24,8 +21,6 @@ function validateSymbol(raw: string): string | null {
   }
   return US_TICKER_RE.test(raw) ? null : 'Invalid symbol — use uppercase letters only (e.g. AAPL)';
 }
-
-// ── VN stocks (Yahoo Finance + SQLite cache) ─────────────────────────────────
 
 const YF_CHART = 'https://query1.finance.yahoo.com/v8/finance/chart';
 const YF_UA    = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
@@ -64,8 +59,6 @@ async function fetchVnFromApi(
     .sort((a, b) => a.time - b.time)) as CandleRow[];
 }
 
-// ── Binance (crypto) ──────────────────────────────────────────────────────────
-
 const BINANCE_INTERVAL: Record<string, string> = {
   '1': '1m', '5': '5m', '15': '15m', '30': '30m', '60': '1h', 'D': '1d',
 };
@@ -73,7 +66,6 @@ const BINANCE_INTERVAL: Record<string, string> = {
 async function fetchBinanceFromApi(
   rawSymbol: string, resolution: string, from: number, to: number
 ): Promise<CandleRow[]> {
-  // BINANCE:BTCUSDT → BTCUSDT
   const pair     = rawSymbol.includes(':') ? rawSymbol.split(':')[1] : rawSymbol;
   const interval = BINANCE_INTERVAL[resolution] ?? '1d';
 
@@ -81,7 +73,7 @@ async function fetchBinanceFromApi(
   let startMs = from * 1000;
   const endMs  = to   * 1000;
 
-  // Binance returns max 1000 bars per call; paginate up to 5 pages
+  // max 1000 bars per Binance call; paginate up to 5 pages
   for (let page = 0; page < 5; page++) {
     const { data } = await axios.get('https://api.binance.com/api/v3/klines', {
       params: { symbol: pair, interval, startTime: startMs, endTime: endMs, limit: 1000 },
@@ -109,8 +101,6 @@ async function fetchBinanceFromApi(
   return all.sort((a, b) => a.time - b.time);
 }
 
-// ── Finnhub (US stocks) ───────────────────────────────────────────────────────
-
 async function fetchFinnhubFromApi(
   rawSymbol: string, resolution: string, token: string, from: number, to: number
 ): Promise<CandleRow[]> {
@@ -131,17 +121,13 @@ async function fetchFinnhubFromApi(
   }));
 }
 
-// ── Route ─────────────────────────────────────────────────────────────────────
-
 router.get('/:symbol', async (req: Request, res: Response) => {
   const rawSymbol = req.params.symbol.toUpperCase();
   const { resolution = '1', from, to } = req.query;
 
-  // Validate symbol to prevent Path Traversal / SSRF via URL manipulation
   const symbolErr = validateSymbol(rawSymbol);
   if (symbolErr) return res.status(400).json({ error: symbolErr });
 
-  // Validate resolution
   if (!VALID_RESOLUTIONS.has(String(resolution))) {
     return res.status(400).json({ error: 'Invalid resolution. Allowed: 1, 5, 15, 30, 60, D' });
   }
@@ -150,7 +136,6 @@ router.get('/:symbol', async (req: Request, res: Response) => {
   const fromTime = from ? Number(from) : now - 24 * 3600;
   const toTime   = to   ? Number(to)   : now;
 
-  // Validate timestamps — reject NaN, out-of-range, or nonsensical ranges
   if (!Number.isFinite(fromTime) || !Number.isFinite(toTime)) {
     return res.status(400).json({ error: 'Invalid from/to — must be Unix timestamps' });
   }
@@ -170,20 +155,17 @@ router.get('/:symbol', async (req: Request, res: Response) => {
     let candles: CandleRow[];
 
     if (rawSymbol.startsWith('VN:')) {
-      // Vietnamese stocks — Yahoo Finance (.VN suffix)
       const ticker = rawSymbol.slice(3);
       candles = await getCandlesWithCache(
         rawSymbol, String(resolution), fromTime, toTime,
         (f, t) => fetchVnFromApi(ticker, String(resolution), f, t)
       );
     } else if (rawSymbol.includes(':')) {
-      // EXCHANGE:PAIR format (BINANCE:BTCUSDT, etc.) — Binance REST API
       candles = await getCandlesWithCache(
         rawSymbol, String(resolution), fromTime, toTime,
         (f, t) => fetchBinanceFromApi(rawSymbol, String(resolution), f, t)
       );
     } else {
-      // Plain US stock ticker — Finnhub
       const token = process.env.FINNHUB_API_KEY ?? '';
       candles = await getCandlesWithCache(
         rawSymbol, String(resolution), fromTime, toTime,

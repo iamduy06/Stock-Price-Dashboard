@@ -76,7 +76,6 @@ export class RelayManager {
     state.volume24h += trade.volume;
     state.updateCount++;
 
-    // Sliding 1-second window for UPS
     state.updateTimestamps.push(now);
     const cutoff = now - 1_000;
     let i = 0;

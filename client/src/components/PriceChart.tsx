@@ -49,7 +49,6 @@ export default function PriceChart({ symbol, resolution, latestTrade }: Props) {
   const [status, setStatus] = useState<Status>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Initialize chart once
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -100,7 +99,6 @@ export default function PriceChart({ symbol, resolution, latestTrade }: Props) {
     };
   }, []);
 
-  // Fetch historical candles whenever symbol or resolution changes
   useEffect(() => {
     currentCandleRef.current = null;
     setStatus('loading');
@@ -121,10 +119,9 @@ export default function PriceChart({ symbol, resolution, latestTrade }: Props) {
           }
         );
 
-        // Guard: chart may have unmounted while request was in flight
         if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
 
-        // Filter nulls/NaN (Yahoo Finance gap-fills) and ensure ascending order
+        // Yahoo Finance sometimes gap-fills with null/NaN — filter those out
         const valid = candles
           .filter(c =>
             c.open != null && c.high != null && c.low != null && c.close != null &&
@@ -159,7 +156,7 @@ export default function PriceChart({ symbol, resolution, latestTrade }: Props) {
         currentCandleRef.current = candleData[candleData.length - 1];
         setStatus('idle');
       } catch (err) {
-        if (axios.isCancel(err)) return; // user switched symbol/resolution — ignore
+        if (axios.isCancel(err)) return;
         console.error('[Chart] candles fetch failed:', err);
         setErrorMsg(axios.isAxiosError(err) ? err.message : String(err));
         setStatus('error');
@@ -169,7 +166,6 @@ export default function PriceChart({ symbol, resolution, latestTrade }: Props) {
     return () => controller.abort();
   }, [symbol, resolution]);
 
-  // Real-time candle update from WebSocket trade
   const updateCandle = useCallback((trade: TradePayload) => {
     if (!candleSeriesRef.current) return;
 
@@ -194,7 +190,7 @@ export default function PriceChart({ symbol, resolution, latestTrade }: Props) {
     try {
       candleSeriesRef.current.update(current);
     } catch {
-      // can throw if timestamp is before last bar — safe to ignore
+      // throws if tick timestamp is before the last bar — ignore
     }
   }, [resolution]);
 

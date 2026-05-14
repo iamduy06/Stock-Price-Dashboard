@@ -1,4 +1,3 @@
--- ── Drop existing (clean slate, safe for re-run) ─────────────────────────────
 DROP FUNCTION IF EXISTS place_order_atomic CASCADE;
 DROP TABLE IF EXISTS public.watchlists  CASCADE;
 DROP TABLE IF EXISTS public.orders      CASCADE;
@@ -7,7 +6,6 @@ DROP TABLE IF EXISTS public.price_history CASCADE;
 DROP TABLE IF EXISTS public.stocks      CASCADE;
 DROP TABLE IF EXISTS public.users       CASCADE;
 
--- ── Users ─────────────────────────────────────────────────────────────────────
 CREATE TABLE public.users (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username      VARCHAR(50) UNIQUE NOT NULL,
@@ -16,7 +14,6 @@ CREATE TABLE public.users (
     created_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- ── Portfolios ────────────────────────────────────────────────────────────────
 CREATE TABLE public.portfolios (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id       UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
@@ -28,7 +25,6 @@ CREATE TABLE public.portfolios (
 
 CREATE INDEX idx_portfolio_user ON public.portfolios (user_id);
 
--- ── Orders ────────────────────────────────────────────────────────────────────
 CREATE TABLE public.orders (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID NOT NULL REFERENCES public.users(id),
@@ -43,7 +39,6 @@ CREATE TABLE public.orders (
 
 CREATE INDEX idx_orders_user_time ON public.orders (user_id, created_at DESC);
 
--- ── Watchlists ────────────────────────────────────────────────────────────────
 CREATE TABLE public.watchlists (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id    UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
@@ -52,7 +47,8 @@ CREATE TABLE public.watchlists (
     UNIQUE(user_id, symbol)
 );
 
--- ── Atomic order placement (BUY / SELL) ──────────────────────────────────────
+-- Executes a BUY or SELL atomically: updates balance, portfolio, and inserts order record.
+-- Returns JSONB with success flag, price, total_value, and new_balance.
 CREATE OR REPLACE FUNCTION place_order_atomic(
     p_user_id   UUID,
     p_symbol    VARCHAR,
@@ -63,6 +59,7 @@ CREATE OR REPLACE FUNCTION place_order_atomic(
 DECLARE
     v_total_value   NUMERIC;
     v_balance       NUMERIC;
+    v_new_balance   NUMERIC;
     v_existing_qty  INT;
     v_existing_avg  NUMERIC;
     v_new_qty       INT;
@@ -82,6 +79,7 @@ BEGIN
         END IF;
 
         UPDATE public.users SET balance = balance - v_total_value WHERE id = p_user_id;
+        v_new_balance := v_balance - v_total_value;
 
         SELECT id, quantity, average_price
         INTO v_portfolio_id, v_existing_qty, v_existing_avg
@@ -105,6 +103,7 @@ BEGIN
         END IF;
 
         UPDATE public.users SET balance = balance + v_total_value WHERE id = p_user_id;
+        v_new_balance := v_balance + v_total_value;
 
         v_new_qty := v_existing_qty - p_quantity;
         IF v_new_qty = 0 THEN
@@ -124,7 +123,8 @@ BEGIN
         'success',     true,
         'message',     'Order placed successfully',
         'price',       p_price,
-        'total_value', v_total_value
+        'total_value', v_total_value,
+        'new_balance', v_new_balance
     );
 END;
 $$ LANGUAGE plpgsql;

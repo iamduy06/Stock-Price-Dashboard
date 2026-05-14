@@ -13,7 +13,10 @@ export const makeGetPortfolio = (relay: RelayManager) =>
         supabase.from('portfolios').select('*').eq('user_id', user_id),
       ]);
 
-      if (userErr) throw userErr;
+      if (userErr) {
+        if (userErr.code === 'PGRST116') return res.status(401).json({ message: 'Session expired, please log in again' });
+        throw userErr;
+      }
       if (portErr) throw portErr;
 
       const holdings = (portfolio ?? []).map((item) => {
@@ -67,8 +70,11 @@ export const getMe = async (req: AuthRequest, res: Response) => {
       .select('id, username, balance, created_at')
       .eq('id', user_id)
       .single();
-    if (error) throw error;
-    return res.json(data);
+    if (error) {
+      if (error.code === 'PGRST116') return res.status(401).json({ message: 'Session expired, please log in again' });
+      throw error;
+    }
+    return res.json({ ...data, balance: Number(data.balance) });
   } catch (err: any) {
     console.error('[getMe]', err.message);
     return res.status(500).json({ message: 'Failed to load user data' });

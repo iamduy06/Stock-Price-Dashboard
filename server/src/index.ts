@@ -23,7 +23,6 @@ import openApiSpec from './openapi.json';
 
 dotenv.config();
 
-// Initialise SQLite (creates tables + indexes if needed)
 initDb();
 
 const DEFAULT_FINNHUB_SYMBOLS = [
@@ -31,7 +30,7 @@ const DEFAULT_FINNHUB_SYMBOLS = [
   'BINANCE:BTCUSDT', 'BINANCE:ETHUSDT',
 ];
 
-// Raw tickers (without VN: prefix) subscribed to TCBS
+// VN tickers without the VN: prefix — TCBS uses raw ticker strings
 const DEFAULT_VN_TICKERS = ['VNM', 'VCB', 'FPT', 'VHM', 'HPG'];
 
 const DEFAULT_SYMBOLS = [
@@ -49,7 +48,6 @@ app.use(cors({
 app.use(express.json({ limit: '16kb' }));
 app.use(timingMiddleware);
 
-// Rate limiting: auth endpoints — 10 attempts per 15 min per IP
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -58,7 +56,6 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Trade endpoints — 60 orders per minute per IP
 const tradeLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 60,
@@ -76,7 +73,6 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 const relay = new RelayManager();
 
-// Routes that depend on relay must come after relay is created
 app.use('/api/stats', makeStatsRouter(relay));
 app.use('/api/trade', tradeLimiter, makeTradeRouter(relay));
 app.use('/api/user',  makeUserRouter(relay));
@@ -112,7 +108,8 @@ const tcbs = new TcbsClient();
 finnhub.on('trade', (trade) => relay.onTrade(trade));
 tcbs.on('trade', (trade) => relay.onTrade(trade));
 
-// Fetch Finnhub REST quote and emit as a synthetic trade to pre-populate the card
+// Fetches a REST quote from Finnhub and injects it as a synthetic trade so ticker
+// cards show a price immediately on startup, before the first WS trade arrives.
 async function seedFinnhubQuote(symbol: string): Promise<void> {
   const token = process.env.FINNHUB_API_KEY;
   if (!token) return;
@@ -121,7 +118,6 @@ async function seedFinnhubQuote(symbol: string): Promise<void> {
       params: { symbol, token },
       timeout: 5000,
     });
-    // data.c = current/last price, data.pc = previous close
     if (!data.c) return;
     relay.onTrade({
       symbol,
@@ -137,7 +133,7 @@ async function seedFinnhubQuote(symbol: string): Promise<void> {
 
 finnhub.on('connected', () => {
   DEFAULT_FINNHUB_SYMBOLS.forEach(sym => finnhub.subscribe(sym));
-  // Seed quotes staggered to respect Finnhub free-tier rate limit (30 req/s)
+  // stagger seed calls to stay within Finnhub free-tier rate limit (30 req/s)
   DEFAULT_FINNHUB_SYMBOLS.forEach((sym, i) => {
     setTimeout(() => void seedFinnhubQuote(sym), i * 200);
   });
@@ -148,7 +144,6 @@ finnhub.connect();
 DEFAULT_VN_TICKERS.forEach(t => tcbs.subscribe(t));
 tcbs.start();
 
-// Allowed symbol patterns for WebSocket subscriptions
 const WS_VN_TICKER_RE   = /^[A-Z0-9]{1,10}$/;
 const WS_CRYPTO_RE      = /^[A-Z0-9]{1,20}:[A-Z0-9]{1,20}$/;
 const WS_US_TICKER_RE   = /^[A-Z]{1,10}$/;
@@ -178,13 +173,11 @@ wss.on('connection', (ws: WebSocket) => {
       const sym: string = typeof parsed.symbol === 'string' ? parsed.symbol.toUpperCase() : '';
       if (!sym) return;
 
-      // Reject symbols that don't match the expected format
       if (!isValidWsSymbol(sym)) {
         ws.send(JSON.stringify({ type: 'error', message: 'Invalid symbol format' }));
         return;
       }
 
-      // Let relay track client subscriptions (enforces per-client limit)
       relay.handleClientMessage(clientId, JSON.stringify({ ...parsed, symbol: sym }));
 
       if (parsed.type === 'subscribe') {

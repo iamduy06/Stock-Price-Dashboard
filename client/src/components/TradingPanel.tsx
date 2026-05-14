@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStockStore } from '../store/stockStore';
 import { placeOrder } from '../services/apiService';
-import { getMe } from '../services/apiService';
 
 interface Props {
   symbol: string;
@@ -40,9 +39,8 @@ export default function TradingPanel({ symbol }: Props) {
         text: `${type} ${qty} ${symbol} @ ${Number(data.price).toLocaleString()} — Tổng: ${Number(data.total_value).toLocaleString()}`,
       });
       setQuantity('');
-      // Refresh balance
-      const me = await getMe();
-      updateBalance(me.balance);
+      const nb = Number(data.new_balance);
+      if (!isNaN(nb)) updateBalance(nb);
     } catch (err: any) {
       setMessage({
         ok: false,

@@ -25,10 +25,12 @@ export default function PortfolioPage() {
       .then(([p, o]) => {
         setPortfolio(p);
         setOrders(o);
-        // Subscribe to all held symbols for live price updates
         p.portfolio.forEach((item) => subscribeSymbol(item.symbol));
       })
-      .catch((err) => setError(err.response?.data?.message ?? 'Không thể tải dữ liệu'))
+      .catch((err) => {
+        if (err.response?.status === 401) { navigate('/login'); return; }
+        setError(err.response?.data?.message ?? 'Không thể tải dữ liệu');
+      })
       .finally(() => setLoading(false));
   }, []);
 

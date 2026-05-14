@@ -5,7 +5,7 @@ import { WsMessage } from '../types';
 const WS_URL = import.meta.env.VITE_WS_URL ?? `ws://${window.location.hostname}:3001`;
 const MAX_RECONNECT_DELAY = 30_000;
 
-// Module-level refs so any component can subscribe/unsubscribe without the hook
+// Module-level so subscribeSymbol/unsubscribeSymbol work from any component without prop drilling
 let _ws: WebSocket | null = null;
 
 export function subscribeSymbol(symbol: string) {
@@ -87,7 +87,6 @@ export function useStockWS() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-subscribe when watchlist changes
   const { watchlist } = useStockStore();
   useEffect(() => {
     if (_ws?.readyState === WebSocket.OPEN) {

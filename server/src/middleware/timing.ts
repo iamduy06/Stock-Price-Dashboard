@@ -1,11 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { logRequest } from '../db';
 
-/**
- * Express middleware that measures response time and persists it to SQLite.
- * Strips query-string and numeric path segments so endpoints aggregate cleanly:
- *   /api/candles/AAPL?resolution=D  →  /api/candles/:symbol
- */
+// Measures response time per request and writes to SQLite for latency stats.
 export function timingMiddleware(req: Request, res: Response, next: NextFunction): void {
   const start = process.hrtime.bigint();
 
@@ -18,7 +14,6 @@ export function timingMiddleware(req: Request, res: Response, next: NextFunction
   next();
 }
 
-// Replace last path segment (the dynamic :symbol / :id part) with a placeholder
 function normalise(p: string): string {
   return p.replace(/\/[^/]+$/, '/:param');
 }

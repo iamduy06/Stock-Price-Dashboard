@@ -2,8 +2,7 @@ import EventEmitter from 'events';
 import axios from 'axios';
 import { RawTrade } from './types';
 
-// Yahoo Finance is the data source for VN stocks (HOSE/HNX)
-// Symbol mapping: VN:VNM → VNM.VN on Yahoo Finance
+// VN stocks (HOSE/HNX) polled from Yahoo Finance — VN:VNM maps to VNM.VN
 
 const YF_CHART = 'https://query1.finance.yahoo.com/v8/finance/chart';
 const POLL_MS = 5000;
@@ -16,8 +15,7 @@ interface YFMeta {
   regularMarketPreviousClose?: number;
 }
 
-// Only alphanumeric — blocks path separators and URL-encoded sequences like ..%2f
-const TICKER_RE = /^[A-Z0-9]{1,10}$/;
+const TICKER_RE = /^[A-Z0-9]{1,10}$/; // blocks path separators and encoded sequences
 
 export class TcbsClient extends EventEmitter {
   private subscriptions = new Set<string>();

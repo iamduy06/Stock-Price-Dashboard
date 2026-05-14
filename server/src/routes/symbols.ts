@@ -2,8 +2,6 @@ import { Router, Request, Response } from 'express';
 
 const router = Router();
 
-// ── VN stock symbol list (HOSE + HNX blue-chips) ────────────────────────────
-
 interface SymbolInfo {
   symbol: string;   // internal key (VN:VNM, BINANCE:BTCUSDT, AAPL)
   name: string;
@@ -12,7 +10,6 @@ interface SymbolInfo {
 }
 
 const VN_SYMBOLS: SymbolInfo[] = [
-  // HOSE blue-chips
   { symbol: 'VN:VNM',  name: 'Vinamilk',                       exchange: 'HOSE', type: 'vn' },
   { symbol: 'VN:VCB',  name: 'Vietcombank',                    exchange: 'HOSE', type: 'vn' },
   { symbol: 'VN:FPT',  name: 'FPT Corporation',                exchange: 'HOSE', type: 'vn' },
@@ -41,7 +38,6 @@ const VN_SYMBOLS: SymbolInfo[] = [
   { symbol: 'VN:VCI',  name: 'Viet Capital Securities',        exchange: 'HOSE', type: 'vn' },
   { symbol: 'VN:HCM',  name: 'Ho Chi Minh City Securities',    exchange: 'HOSE', type: 'vn' },
   { symbol: 'VN:VDS',  name: 'Rong Viet Securities',           exchange: 'HOSE', type: 'vn' },
-  // HNX
   { symbol: 'VN:PVS',  name: 'PetroVietnam Technical Services', exchange: 'HNX', type: 'vn' },
   { symbol: 'VN:SHN',  name: 'Sai Gon - Ha Noi Securities',    exchange: 'HNX', type: 'vn' },
   { symbol: 'VN:VCS',  name: 'VICOSTONE',                       exchange: 'HNX', type: 'vn' },
@@ -71,15 +67,6 @@ const CRYPTO_SYMBOLS: SymbolInfo[] = [
 
 const ALL_SYMBOLS = [...VN_SYMBOLS, ...US_SYMBOLS, ...CRYPTO_SYMBOLS];
 
-/**
- * GET /api/symbols/search?q=vnm&type=vn
- *
- * Query params:
- *   q    – search term (case-insensitive, searches symbol + name)
- *   type – optional filter: vn | us | crypto
- *
- * Response: SymbolInfo[]  (max 20 results)
- */
 router.get('/search', (req: Request, res: Response) => {
   const q    = String(req.query.q ?? '').toLowerCase().trim();
   const type = req.query.type as string | undefined;
@@ -98,10 +85,6 @@ router.get('/search', (req: Request, res: Response) => {
   res.json(results.slice(0, 20));
 });
 
-/**
- * GET /api/symbols
- * Returns the full symbol list, optionally filtered by type.
- */
 router.get('/', (req: Request, res: Response) => {
   const type = req.query.type as string | undefined;
   const result = type ? ALL_SYMBOLS.filter(s => s.type === type) : ALL_SYMBOLS;
