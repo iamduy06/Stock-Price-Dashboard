@@ -18,7 +18,7 @@ export class SimulatorService {
   private onTickCallback: ((tick: StockTick) => void) | null = null;
 
   private constructor() {
-    this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+    this.redis = new Redis(process.env.REDIS_URL);
   }
 
   public static getInstance(): SimulatorService {
@@ -27,6 +27,8 @@ export class SimulatorService {
     }
     return SimulatorService.instance;
   }
+
+  private dailyTicks: Map<string, StockTick[]> = new Map();
 
   public async start() {
     const { data, error } = await supabase.from('stocks').select('*');
@@ -37,11 +39,13 @@ export class SimulatorService {
       await this.redis.hset('stock_prices', s.symbol, s.reference_price);
       this.ticks.set(s.symbol, []);
       this.hourlyTicks.set(s.symbol, []);
+      this.dailyTicks.set(s.symbol, []);
     }
 
     this.interval = setInterval(() => this.tick(), 1000);
     setInterval(() => this.aggregateOHLC('1M'), 60000);
     setInterval(() => this.aggregateOHLC('1H'), 3600000);
+    setInterval(() => this.aggregateOHLC('1D'), 86400000);
   }
 
   private async tick() {
@@ -53,7 +57,11 @@ export class SimulatorService {
       const randomFactor = (Math.random() * 2) - 1;
       let newPrice = current * (1 + randomFactor * volatility);
 
-      newPrice = Math.max(Number(stock.floor_price), Math.min(newPrice, Number(stock.ceiling_price)));
+      const floor = Number(stock.floor_price);
+      const ceiling = Number(stock.ceiling_price);
+      if (newPrice < floor) newPrice = floor;
+      if (newPrice > ceiling) newPrice = ceiling;
+
       newPrice = Math.round(newPrice / 10) * 10;
 
       await this.redis.hset('stock_prices', stock.symbol, newPrice);
@@ -67,6 +75,7 @@ export class SimulatorService {
 
       this.ticks.get(stock.symbol)?.push(tickData);
       this.hourlyTicks.get(stock.symbol)?.push(tickData);
+      this.dailyTicks.get(stock.symbol)?.push(tickData);
       this.onTickCallback?.(tickData);
     }
   }
@@ -109,7 +118,13 @@ export class SimulatorService {
     }
 
     const now = new Date();
-    const sourceMap = timeframe === '1M' ? this.ticks : this.hourlyTicks;
+    let sourceMap;
+    switch (timeframe) {
+      case '1M': sourceMap = this.ticks; break;
+      case '1H': sourceMap = this.hourlyTicks; break;
+      case '1D': sourceMap = this.dailyTicks; break;
+      default: sourceMap = this.ticks;
+    }
 
     for (const stock of this.stocks) {
       const stockTicks = sourceMap.get(stock.symbol) || [];
@@ -137,3 +152,4 @@ export class SimulatorService {
     }
   }
 }
+
