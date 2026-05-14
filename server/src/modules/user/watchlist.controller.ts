@@ -1,45 +1,49 @@
-import type { FastifyRequest, FastifyReply } from 'fastify';
-import { supabase } from '../../config/supabase.js';
+import { Response } from 'express';
+import { supabase } from '../../config/supabase';
+import { AuthRequest } from '../auth/auth.middleware';
 
-export const getWatchlist = async (request: FastifyRequest, reply: FastifyReply) => {
-  const { id: user_id } = (request as any).user;
+const SYMBOL_RE = /^[A-Z0-9:._-]{1,20}$/i;
 
+export const getWatchlist = async (req: AuthRequest, res: Response) => {
+  const user_id = req.user!.id;
   try {
     const { data, error } = await supabase
       .from('watchlists')
-      .select('symbol, stocks(*)')
-      .eq('user_id', user_id);
-
+      .select('symbol, created_at')
+      .eq('user_id', user_id)
+      .order('created_at', { ascending: true });
     if (error) throw error;
-    return reply.send(data);
-  } catch (error: any) {
-    return reply.status(500).send({ message: error.message });
+    return res.json(data);
+  } catch (err: any) {
+    console.error('[getWatchlist]', err.message);
+    return res.status(500).json({ message: 'Failed to load watchlist' });
   }
 };
 
-export const addToWatchlist = async (request: FastifyRequest, reply: FastifyReply) => {
-  const { id: user_id } = (request as any).user;
-  const { symbol } = request.body as any;
+export const addWatchlist = async (req: AuthRequest, res: Response) => {
+  const user_id = req.user!.id;
+  const { symbol } = req.body as { symbol?: string };
 
-  if (!symbol) return reply.status(400).send({ message: 'Symbol is required' });
+  if (!symbol || !SYMBOL_RE.test(symbol))
+    return res.status(400).json({ message: 'Invalid symbol format' });
 
   try {
     const { data, error } = await supabase
       .from('watchlists')
-      .insert({ user_id, symbol })
+      .insert({ user_id, symbol: symbol.toUpperCase() })
       .select()
       .single();
-
-    if (error) return reply.status(400).send({ message: 'Stock already in watchlist or invalid symbol' });
-    return reply.status(201).send(data);
-  } catch (error: any) {
-    return reply.status(500).send({ message: error.message });
+    if (error) return res.status(400).json({ message: 'Already in watchlist or invalid symbol' });
+    return res.status(201).json(data);
+  } catch (err: any) {
+    console.error('[addWatchlist]', err.message);
+    return res.status(500).json({ message: 'Failed to update watchlist' });
   }
 };
 
-export const removeFromWatchlist = async (request: FastifyRequest, reply: FastifyReply) => {
-  const { id: user_id } = (request as any).user;
-  const { symbol } = request.params as any;
+export const removeWatchlist = async (req: AuthRequest, res: Response) => {
+  const user_id = req.user!.id;
+  const { symbol } = req.params;
 
   try {
     const { error } = await supabase
@@ -47,10 +51,10 @@ export const removeFromWatchlist = async (request: FastifyRequest, reply: Fastif
       .delete()
       .eq('user_id', user_id)
       .eq('symbol', symbol);
-
     if (error) throw error;
-    return reply.send({ message: 'Removed from watchlist' });
-  } catch (error: any) {
-    return reply.status(500).send({ message: error.message });
+    return res.json({ message: 'Removed from watchlist' });
+  } catch (err: any) {
+    console.error('[removeWatchlist]', err.message);
+    return res.status(500).json({ message: 'Failed to update watchlist' });
   }
 };

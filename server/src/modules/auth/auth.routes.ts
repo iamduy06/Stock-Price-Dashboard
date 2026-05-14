@@ -1,7 +1,9 @@
-import type { FastifyInstance } from 'fastify';
-import { register, login } from './auth.controller.js';
+import { Router } from 'express';
+import { register, login } from './auth.controller';
 
-export default async function authRoutes(fastify: FastifyInstance) {
-  fastify.post('/register', register);
-  fastify.post('/login', login);
-}
+const router = Router();
+
+router.post('/register', register);
+router.post('/login', login);
+
+export default router;

@@ -1,44 +1,76 @@
-import type { FastifyRequest, FastifyReply } from 'fastify';
-import { supabase } from '../../config/supabase.js';
-import { SimulatorService } from '../../services/SimulatorService.js';
+import { Response } from 'express';
+import { supabase } from '../../config/supabase';
+import { AuthRequest } from '../auth/auth.middleware';
+import { RelayManager } from '../../relay';
 
-export const getPortfolio = async (request: FastifyRequest, reply: FastifyReply) => {
-  const { id: user_id } = (request as any).user;
+export const makeGetPortfolio = (relay: RelayManager) =>
+  async (req: AuthRequest, res: Response) => {
+    const user_id = req.user!.id;
+
+    try {
+      const [{ data: user, error: userErr }, { data: portfolio, error: portErr }] = await Promise.all([
+        supabase.from('users').select('balance').eq('id', user_id).single(),
+        supabase.from('portfolios').select('*').eq('user_id', user_id),
+      ]);
+
+      if (userErr) throw userErr;
+      if (portErr) throw portErr;
+
+      const holdings = (portfolio ?? []).map((item) => {
+        const currentPrice = relay.getPrice(item.symbol) ?? Number(item.average_price);
+        const totalValue   = currentPrice * item.quantity;
+        const profitLoss   = (currentPrice - Number(item.average_price)) * item.quantity;
+        const profitPct    = Number(item.average_price) > 0
+          ? (profitLoss / (Number(item.average_price) * item.quantity)) * 100
+          : 0;
+        return { ...item, current_price: currentPrice, total_value: totalValue, profit_loss: profitLoss, profit_percent: profitPct };
+      });
+
+      const totalStockValue = holdings.reduce((sum, h) => sum + h.total_value, 0);
+
+      return res.json({
+        balance:           user?.balance ?? 0,
+        total_stock_value: totalStockValue,
+        total_assets:      Number(user?.balance ?? 0) + totalStockValue,
+        portfolio:         holdings,
+      });
+    } catch (err: any) {
+      console.error('[getPortfolio]', err.message);
+      return res.status(500).json({ message: 'Failed to load portfolio' });
+    }
+  };
+
+export const getOrderHistory = async (req: AuthRequest, res: Response) => {
+  const user_id = req.user!.id;
 
   try {
-    const { data: user } = await supabase
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('user_id', user_id)
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) throw error;
+    return res.json(data);
+  } catch (err: any) {
+    console.error('[getOrderHistory]', err.message);
+    return res.status(500).json({ message: 'Failed to load orders' });
+  }
+};
+
+export const getMe = async (req: AuthRequest, res: Response) => {
+  const user_id = req.user!.id;
+  try {
+    const { data, error } = await supabase
       .from('users')
-      .select('balance')
+      .select('id, username, balance, created_at')
       .eq('id', user_id)
       .single();
-
-    const { data: portfolio } = await supabase
-      .from('portfolios')
-      .select('*')
-      .eq('user_id', user_id);
-
-    const simulator = SimulatorService.getInstance();
-    
-    const stocksWithRealtime = await Promise.all((portfolio || []).map(async (item) => {
-      const currentPrice = await simulator.getCurrentPrice(item.symbol) || Number(item.average_price);
-      return {
-        ...item,
-        current_price: currentPrice,
-        total_value: currentPrice * item.quantity,
-        profit_loss: (currentPrice - Number(item.average_price)) * item.quantity,
-        profit_percent: ((currentPrice - Number(item.average_price)) / Number(item.average_price)) * 100
-      };
-    }));
-
-    const totalStockValue = stocksWithRealtime.reduce((sum, item) => sum + item.total_value, 0);
-
-    return reply.send({
-      balance: user?.balance,
-      total_stock_value: totalStockValue,
-      total_assets: Number(user?.balance) + totalStockValue,
-      portfolio: stocksWithRealtime
-    });
-  } catch (error: any) {
-    return reply.status(500).send({ message: error.message });
+    if (error) throw error;
+    return res.json(data);
+  } catch (err: any) {
+    console.error('[getMe]', err.message);
+    return res.status(500).json({ message: 'Failed to load user data' });
   }
 };

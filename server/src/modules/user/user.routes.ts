@@ -1,18 +1,19 @@
-import { FastifyInstance } from 'fastify';
-import { getPortfolio } from './user.controller.js';
-import { placeOrder } from './order.controller.js';
-import { getOrderHistory } from './order.history.controller.js';
-import { getWatchlist, addToWatchlist, removeFromWatchlist } from './watchlist.controller.js';
-import { authenticate } from '../auth/auth.middleware.js';
+import { Router } from 'express';
+import { requireAuth } from '../auth/auth.middleware';
+import { makeGetPortfolio, getOrderHistory, getMe } from './user.controller';
+import { getWatchlist, addWatchlist, removeWatchlist } from './watchlist.controller';
+import { RelayManager } from '../../relay';
 
-export default async function userRoutes(fastify: FastifyInstance) {
-  fastify.addHook('preHandler', authenticate);
+export const makeUserRouter = (relay: RelayManager) => {
+  const router = Router();
 
-  fastify.get('/portfolio', getPortfolio);
-  fastify.post('/orders/place', placeOrder);
-  fastify.get('/orders', getOrderHistory);
-  
-  fastify.get('/watchlist', getWatchlist);
-  fastify.post('/watchlist', addToWatchlist);
-  fastify.delete('/watchlist/:symbol', removeFromWatchlist);
-}
+  router.get('/me',        requireAuth, getMe);
+  router.get('/portfolio', requireAuth, makeGetPortfolio(relay));
+  router.get('/orders',    requireAuth, getOrderHistory);
+
+  router.get('/watchlist',           requireAuth, getWatchlist);
+  router.post('/watchlist',          requireAuth, addWatchlist);
+  router.delete('/watchlist/:symbol', requireAuth, removeWatchlist);
+
+  return router;
+};

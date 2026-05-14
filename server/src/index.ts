@@ -10,6 +10,9 @@ import { TcbsClient } from './tcbs';
 import { RelayManager } from './relay';
 import { RawTrade } from './types';
 import { makeTradeRouter } from './modules/trade/trade.routes';
+import authRouter from './modules/auth/auth.routes';
+import { makeUserRouter } from './modules/user/user.routes';
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
@@ -34,6 +37,14 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '16kb' }));
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: 'Too many attempts, please try again in 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 const relay = new RelayManager();
@@ -41,6 +52,8 @@ const relay = new RelayManager();
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: Date.now() }));
 app.get('/api/stats', (_req, res) => res.json(relay.getStats()));
 app.use('/api/trade', makeTradeRouter(relay));
+app.use('/api/auth',  authLimiter, authRouter);
+app.use('/api/user',  makeUserRouter(relay));
 
 const finnhub = new FinnhubClient(process.env.FINNHUB_API_KEY ?? '');
 const tcbs = new TcbsClient();
