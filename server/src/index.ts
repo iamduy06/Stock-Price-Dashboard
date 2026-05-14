@@ -13,8 +13,14 @@ import { makeTradeRouter } from './modules/trade/trade.routes';
 import authRouter from './modules/auth/auth.routes';
 import { makeUserRouter } from './modules/user/user.routes';
 import rateLimit from 'express-rate-limit';
+import { initDb } from './db';
+import quotesRouter from './routes/quotes';
+import candlesRouter from './routes/candles';
+import symbolsRouter from './routes/symbols';
 
 dotenv.config();
+
+initDb();
 
 const DEFAULT_FINNHUB_SYMBOLS = [
   'AAPL', 'MSFT', 'GOOGL', 'TSLA', 'NVDA',
@@ -54,6 +60,9 @@ app.get('/api/stats', (_req, res) => res.json(relay.getStats()));
 app.use('/api/trade', makeTradeRouter(relay));
 app.use('/api/auth',  authLimiter, authRouter);
 app.use('/api/user',  makeUserRouter(relay));
+app.use('/api/quote',   quotesRouter);
+app.use('/api/candles', candlesRouter);
+app.use('/api/symbols', symbolsRouter);
 
 const finnhub = new FinnhubClient(process.env.FINNHUB_API_KEY ?? '');
 const tcbs = new TcbsClient();
