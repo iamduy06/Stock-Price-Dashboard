@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import http from 'http';
 import WebSocket, { WebSocketServer } from 'ws';
 import dotenv from 'dotenv';
@@ -9,16 +10,15 @@ import { FinnhubClient } from './finnhub';
 import { TcbsClient } from './tcbs';
 import { RelayManager } from './relay';
 import { RawTrade } from './types';
-import { makeTradeRouter } from './modules/trade/trade.routes';
-import authRouter from './modules/auth/auth.routes';
-import { makeUserRouter } from './modules/user/user.routes';
-import rateLimit from 'express-rate-limit';
 import { initDb } from './db';
+import { timingMiddleware } from './middleware/timing';
 import quotesRouter from './routes/quotes';
 import candlesRouter from './routes/candles';
 import symbolsRouter from './routes/symbols';
 import { makeStatsRouter } from './routes/stats';
-import { timingMiddleware } from './middleware/timing';
+import authRouter from './modules/auth/auth.routes';
+import { makeTradeRouter } from './modules/trade/trade.routes';
+import { makeUserRouter } from './modules/user/user.routes';
 import openApiSpec from './openapi.json';
 
 dotenv.config();
@@ -63,15 +63,19 @@ const tradeLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+app.use('/api/quote',   quotesRouter);
+app.use('/api/candles', candlesRouter);
+app.use('/api/symbols', symbolsRouter);
+app.use('/api/auth',    authLimiter, authRouter);
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 const relay = new RelayManager();
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', ts: Date.now() }));
 app.use('/api/stats', makeStatsRouter(relay));
 app.use('/api/trade', tradeLimiter, makeTradeRouter(relay));
-app.use('/api/auth',  authLimiter, authRouter);
 app.use('/api/user',  makeUserRouter(relay));
+app.get('/health', (_req, res) => res.json({ status: 'ok', ts: Date.now() }));
 app.get('/api/openapi.json', (_req, res) => res.json(openApiSpec));
 app.get('/api/docs', (_req, res) => {
   res.setHeader('Content-Type', 'text/html');
@@ -97,10 +101,6 @@ app.get('/api/docs', (_req, res) => {
 </body>
 </html>`);
 });
-app.use('/api/quote',   quotesRouter);
-app.use('/api/candles', candlesRouter);
-app.use('/api/symbols', symbolsRouter);
-
 const finnhub = new FinnhubClient(process.env.FINNHUB_API_KEY ?? '');
 const tcbs = new TcbsClient();
 
@@ -125,7 +125,7 @@ async function seedFinnhubQuote(symbol: string): Promise<void> {
       ...(data.pc ? { prevClose: data.pc } : {}),
     } as RawTrade);
   } catch {
-    // Silence errors during seeding
+
   }
 }
 
@@ -191,7 +191,7 @@ wss.on('connection', (ws: WebSocket) => {
         }
       }
     } catch {
-      // Ignore invalid JSON
+
     }
   });
 
@@ -205,7 +205,7 @@ wss.on('connection', (ws: WebSocket) => {
 
 const PORT = Number(process.env.PORT ?? 3001);
 server.listen(PORT, () => {
-  console.log(`[Server] Real-time Streaming Relay listening on port ${PORT}`);
+  console.log(`[Server] HTTP + WebSocket listening on port ${PORT}`);
   console.log(`[Server] Default symbols: ${DEFAULT_SYMBOLS.join(', ')}`);
 });
 
