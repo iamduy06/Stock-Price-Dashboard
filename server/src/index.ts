@@ -17,6 +17,8 @@ import { initDb } from './db';
 import quotesRouter from './routes/quotes';
 import candlesRouter from './routes/candles';
 import symbolsRouter from './routes/symbols';
+import { makeStatsRouter } from './routes/stats';
+import { timingMiddleware } from './middleware/timing';
 
 dotenv.config();
 
@@ -42,6 +44,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json({ limit: '16kb' }));
+app.use(timingMiddleware);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -51,13 +54,21 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const tradeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { message: 'Too many requests, slow down' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 const relay = new RelayManager();
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: Date.now() }));
-app.get('/api/stats', (_req, res) => res.json(relay.getStats()));
-app.use('/api/trade', makeTradeRouter(relay));
+app.use('/api/stats', makeStatsRouter(relay));
+app.use('/api/trade', tradeLimiter, makeTradeRouter(relay));
 app.use('/api/auth',  authLimiter, authRouter);
 app.use('/api/user',  makeUserRouter(relay));
 app.use('/api/quote',   quotesRouter);
