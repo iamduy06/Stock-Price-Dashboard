@@ -60,7 +60,7 @@ export const register = async (req: Request, res: Response) => {
       { expiresIn: '7d' }
     );
 
-    return res.status(201).json({ token, user: data });
+    return res.status(201).json({ token, user: { ...data, balance: Number(data.balance) } });
   } catch (err: any) {
     console.error('[register] error:', err.message);
     return res.status(500).json({ message: 'Registration failed, please try again' });
@@ -81,7 +81,7 @@ export const login = async (req: Request, res: Response) => {
       .single();
 
     if (error || !user) {
-
+      // Constant-time response to prevent user enumeration
       await bcrypt.compare(password, '$2b$10$invalidhashpadding000000000000000000000000000000000000');
       return res.status(401).json({ message: 'Invalid username or password' });
     }
@@ -98,7 +98,7 @@ export const login = async (req: Request, res: Response) => {
 
     return res.json({
       token,
-      user: { id: user.id, username: user.username, balance: user.balance },
+      user: { id: user.id, username: user.username, balance: Number(user.balance) },
     });
   } catch (err: any) {
     console.error('[login] error:', err.message);

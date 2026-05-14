@@ -48,7 +48,7 @@ export class RelayManager {
         client.symbols.delete(msg.symbol);
       }
     } catch {
-
+      // ignore malformed messages
     }
   }
 
@@ -143,7 +143,7 @@ export class RelayManager {
         ws.send(JSON.stringify(data));
       }
     } catch {
-
+      // client gone
     }
   }
 }

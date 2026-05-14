@@ -28,6 +28,7 @@ export default function LoginPage() {
       saveSession(token, user);
       setUser(user);
 
+      // Load server watchlist and sync to store
       try {
         const serverList = await getServerWatchlist();
         if (serverList.length > 0) {
@@ -36,7 +37,7 @@ export default function LoginPage() {
           symbols.forEach(subscribeSymbol);
         }
       } catch {
-
+        // keep local watchlist if server fails
       }
 
       navigate('/');
@@ -50,15 +51,15 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center font-mono">
       <div className="w-full max-w-sm">
-
+        {/* Logo */}
         <div className="text-center mb-8">
           <span className="text-accent font-bold text-xl tracking-widest">STOCKSTREAM</span>
           <p className="text-text-secondary text-xs mt-1">Real-time Stock Dashboard</p>
         </div>
 
-
+        {/* Card */}
         <div className="bg-[#1a1f2e] border border-border rounded-xl p-8">
-
+          {/* Tab switcher */}
           <div className="flex mb-6 bg-surface rounded-lg p-1">
             {(['login', 'register'] as Mode[]).map((m) => (
               <button

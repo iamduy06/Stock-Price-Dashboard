@@ -3,14 +3,13 @@ import { Router, Request, Response } from 'express';
 const router = Router();
 
 interface SymbolInfo {
-  symbol: string;
+  symbol: string;   // internal key (VN:VNM, BINANCE:BTCUSDT, AAPL)
   name: string;
   exchange: string;
   type: 'vn' | 'us' | 'crypto';
 }
 
 const VN_SYMBOLS: SymbolInfo[] = [
-
   { symbol: 'VN:VNM',  name: 'Vinamilk',                       exchange: 'HOSE', type: 'vn' },
   { symbol: 'VN:VCB',  name: 'Vietcombank',                    exchange: 'HOSE', type: 'vn' },
   { symbol: 'VN:FPT',  name: 'FPT Corporation',                exchange: 'HOSE', type: 'vn' },
@@ -39,7 +38,6 @@ const VN_SYMBOLS: SymbolInfo[] = [
   { symbol: 'VN:VCI',  name: 'Viet Capital Securities',        exchange: 'HOSE', type: 'vn' },
   { symbol: 'VN:HCM',  name: 'Ho Chi Minh City Securities',    exchange: 'HOSE', type: 'vn' },
   { symbol: 'VN:VDS',  name: 'Rong Viet Securities',           exchange: 'HOSE', type: 'vn' },
-
   { symbol: 'VN:PVS',  name: 'PetroVietnam Technical Services', exchange: 'HNX', type: 'vn' },
   { symbol: 'VN:SHN',  name: 'Sai Gon - Ha Noi Securities',    exchange: 'HNX', type: 'vn' },
   { symbol: 'VN:VCS',  name: 'VICOSTONE',                       exchange: 'HNX', type: 'vn' },

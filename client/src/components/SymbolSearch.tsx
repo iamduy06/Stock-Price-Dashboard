@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 
 const PRESETS = [
+  // VN stocks (HOSE blue-chips) — prefix VN:
   'VN:VNM', 'VN:VCB', 'VN:FPT', 'VN:VHM', 'VN:HPG',
   'VN:MSN', 'VN:MWG', 'VN:VIC', 'VN:TCB', 'VN:SSI',
   'VN:ACB', 'VN:BID', 'VN:CTG', 'VN:GAS', 'VN:PLX',
+  // US stocks
   'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX',
+  // Crypto
   'BINANCE:BTCUSDT', 'BINANCE:ETHUSDT', 'BINANCE:SOLUSDT', 'BINANCE:BNBUSDT',
   'BINANCE:ADAUSDT', 'BINANCE:XRPUSDT',
 ];
@@ -39,6 +42,7 @@ export default function SymbolSearch({ watchlist, onAdd }: Props) {
     }
   };
 
+  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {

@@ -61,6 +61,7 @@ export default function Dashboard() {
 
   return (
     <div className="h-screen bg-surface text-text-primary font-mono flex flex-col overflow-hidden">
+      {/* Top Bar */}
       <header className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-accent font-bold text-sm tracking-wider">STOCKSTREAM</span>
@@ -119,7 +120,9 @@ export default function Dashboard() {
         </div>
       </header>
 
+      {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar — Watchlist */}
         <aside className="w-56 border-r border-border flex flex-col shrink-0">
           <div className="p-3 border-b border-border">
             <SymbolSearch watchlist={watchlist} onAdd={handleAddSymbol} />
@@ -138,6 +141,7 @@ export default function Dashboard() {
           </div>
         </aside>
 
+        {/* Center — Chart */}
         <main className="flex-1 flex flex-col overflow-hidden">
           <div className="flex items-center gap-1 px-4 py-2 border-b border-border shrink-0">
             {RESOLUTIONS.map((r) => (
@@ -178,6 +182,7 @@ export default function Dashboard() {
           </div>
         </main>
 
+        {/* Right Sidebar — Metrics + Trading */}
         <aside className="w-56 border-l border-border p-3 shrink-0 overflow-y-auto flex flex-col gap-3">
           <UpdateMetrics
             stocks={stocks}

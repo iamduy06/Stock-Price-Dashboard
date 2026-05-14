@@ -30,6 +30,7 @@ const DEFAULT_FINNHUB_SYMBOLS = [
   'BINANCE:BTCUSDT', 'BINANCE:ETHUSDT',
 ];
 
+// VN tickers without the VN: prefix — TCBS uses raw ticker strings
 const DEFAULT_VN_TICKERS = ['VNM', 'VCB', 'FPT', 'VHM', 'HPG'];
 
 const DEFAULT_SYMBOLS = [
@@ -107,6 +108,8 @@ const tcbs = new TcbsClient();
 finnhub.on('trade', (trade) => relay.onTrade(trade));
 tcbs.on('trade', (trade) => relay.onTrade(trade));
 
+// Fetches a REST quote from Finnhub and injects it as a synthetic trade so ticker
+// cards show a price immediately on startup, before the first WS trade arrives.
 async function seedFinnhubQuote(symbol: string): Promise<void> {
   const token = process.env.FINNHUB_API_KEY;
   if (!token) return;
@@ -115,7 +118,6 @@ async function seedFinnhubQuote(symbol: string): Promise<void> {
       params: { symbol, token },
       timeout: 5000,
     });
-
     if (!data.c) return;
     relay.onTrade({
       symbol,
@@ -125,13 +127,13 @@ async function seedFinnhubQuote(symbol: string): Promise<void> {
       ...(data.pc ? { prevClose: data.pc } : {}),
     } as RawTrade);
   } catch {
-
+    // ignore — live WS will fill it in eventually
   }
 }
 
 finnhub.on('connected', () => {
   DEFAULT_FINNHUB_SYMBOLS.forEach(sym => finnhub.subscribe(sym));
-
+  // stagger seed calls to stay within Finnhub free-tier rate limit (30 req/s)
   DEFAULT_FINNHUB_SYMBOLS.forEach((sym, i) => {
     setTimeout(() => void seedFinnhubQuote(sym), i * 200);
   });
@@ -191,7 +193,7 @@ wss.on('connection', (ws: WebSocket) => {
         }
       }
     } catch {
-
+      // ignore malformed messages
     }
   });
 

@@ -46,6 +46,7 @@ export default function UpdateMetrics({ stocks, wsConnected, reconnectAttempts }
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 space-y-3">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-text-secondary text-xs font-mono uppercase tracking-wider">
           Stream Metrics
@@ -64,6 +65,7 @@ export default function UpdateMetrics({ stocks, wsConnected, reconnectAttempts }
         </div>
       </div>
 
+      {/* Aggregate stats */}
       <div className="grid grid-cols-2 gap-2">
         <div className="bg-surface rounded p-2">
           <div className="text-text-secondary text-xs font-mono mb-1">Total UPS</div>
@@ -77,6 +79,7 @@ export default function UpdateMetrics({ stocks, wsConnected, reconnectAttempts }
         </div>
       </div>
 
+      {/* Per-symbol UPS breakdown */}
       <div className="space-y-2">
         <div className="text-text-secondary text-xs font-mono">Active Streams</div>
         {activeSymbols.length === 0 ? (
@@ -100,6 +103,7 @@ export default function UpdateMetrics({ stocks, wsConnected, reconnectAttempts }
         )}
       </div>
 
+      {/* Timestamp */}
       <div className="text-text-secondary text-xs font-mono border-t border-border pt-2">
         {new Date().toLocaleTimeString('en-US', { hour12: false })} local
       </div>

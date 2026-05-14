@@ -27,7 +27,10 @@ export default function PortfolioPage() {
         setOrders(o);
         p.portfolio.forEach((item) => subscribeSymbol(item.symbol));
       })
-      .catch((err) => setError(err.response?.data?.message ?? 'Không thể tải dữ liệu'))
+      .catch((err) => {
+        if (err.response?.status === 401) { navigate('/login'); return; }
+        setError(err.response?.data?.message ?? 'Không thể tải dữ liệu');
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -49,7 +52,7 @@ export default function PortfolioPage() {
 
   return (
     <div className="min-h-screen bg-surface text-text-primary font-mono">
-
+      {/* Header */}
       <header className="flex items-center gap-3 px-6 py-3 border-b border-border">
         <button
           onClick={() => navigate('/')}
@@ -63,7 +66,7 @@ export default function PortfolioPage() {
       </header>
 
       <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
-
+        {/* Summary cards */}
         <div className="grid grid-cols-3 gap-4">
           {[
             { label: 'Tiền mặt', value: `${fmt(Number(portfolio?.balance))} đ` },
@@ -83,7 +86,7 @@ export default function PortfolioPage() {
           ))}
         </div>
 
-
+        {/* Tabs */}
         <div className="flex gap-1 bg-card border border-border rounded-lg p-1 w-fit">
           {(['holdings', 'orders'] as const).map((t) => (
             <button
@@ -98,7 +101,7 @@ export default function PortfolioPage() {
           ))}
         </div>
 
-
+        {/* Holdings table */}
         {tab === 'holdings' && (
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             {portfolio?.portfolio.length === 0 ? (
@@ -118,7 +121,7 @@ export default function PortfolioPage() {
                 </thead>
                 <tbody>
                   {portfolio?.portfolio.map((item) => {
-
+                    // Use live price from WS if available
                     const livePrice = stocks[item.symbol]?.price ?? item.current_price;
                     const liveValue = livePrice * item.quantity;
                     const livePnL = (livePrice - item.average_price) * item.quantity;
@@ -148,7 +151,7 @@ export default function PortfolioPage() {
           </div>
         )}
 
-
+        {/* Orders table */}
         {tab === 'orders' && (
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             {orders.length === 0 ? (

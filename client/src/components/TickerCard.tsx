@@ -62,6 +62,7 @@ const TickerCard = React.memo(function TickerCard({
         ${flash === 'down' ? 'animate-flash-down' : ''}
       `}
     >
+      {/* Remove button */}
       <button
         onClick={(e) => { e.stopPropagation(); onRemove(); }}
         className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-text-secondary hover:text-price-down transition-opacity text-xs"
@@ -69,6 +70,8 @@ const TickerCard = React.memo(function TickerCard({
       >
         ✕
       </button>
+
+      {/* Symbol */}
       <div className="flex items-center gap-2 mb-2">
         <span className="font-mono font-bold text-text-primary text-sm">
           {shortSymbol(symbol)}
@@ -86,6 +89,7 @@ const TickerCard = React.memo(function TickerCard({
         )}
       </div>
 
+      {/* Price */}
       {data ? (
         <>
           <div className={`font-mono font-bold text-lg ${changeColor}`}>
@@ -95,6 +99,7 @@ const TickerCard = React.memo(function TickerCard({
             {isUp ? '+' : ''}{fmt(data.change, data.change < 1 ? 4 : 2)}
           </div>
 
+          {/* 24h range */}
           <div className="mt-2 text-xs font-mono text-text-secondary">
             <div className="flex justify-between">
               <span>L {fmt(data.low24h, 2)}</span>
@@ -112,6 +117,7 @@ const TickerCard = React.memo(function TickerCard({
             </div>
           </div>
 
+          {/* UPS badge */}
           <div className="mt-2 flex items-center justify-between">
             <span className="text-text-secondary text-xs font-mono">
               Vol {fmtVolume(data.volume24h)}

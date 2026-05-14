@@ -2,6 +2,8 @@ import EventEmitter from 'events';
 import axios from 'axios';
 import { RawTrade } from './types';
 
+// VN stocks (HOSE/HNX) polled from Yahoo Finance — VN:VNM maps to VNM.VN
+
 const YF_CHART = 'https://query1.finance.yahoo.com/v8/finance/chart';
 const POLL_MS = 5000;
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
@@ -13,7 +15,7 @@ interface YFMeta {
   regularMarketPreviousClose?: number;
 }
 
-const TICKER_RE = /^[A-Z0-9]{1,10}$/;
+const TICKER_RE = /^[A-Z0-9]{1,10}$/; // blocks path separators and encoded sequences
 
 export class TcbsClient extends EventEmitter {
   private subscriptions = new Set<string>();
@@ -31,7 +33,7 @@ export class TcbsClient extends EventEmitter {
       return;
     }
     this.subscriptions.add(t);
-    void this.fetchQuote(t);
+    void this.fetchQuote(t); // immediate snapshot
     console.log(`[VN] Subscribed: ${t}`);
   }
 
@@ -73,7 +75,7 @@ export class TcbsClient extends EventEmitter {
         ...(prevClose ? { prevClose } : {}),
       } as RawTrade);
     } catch {
-
+      // network error or market closed — silent skip
     }
   }
 }

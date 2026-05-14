@@ -3,7 +3,7 @@ export interface RawTrade {
   price: number;
   volume: number;
   timestamp: number;
-  prevClose?: number;
+  prevClose?: number; // seed initial change% calculation
 }
 
 export interface TradePayload {

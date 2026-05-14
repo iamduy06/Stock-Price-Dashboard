@@ -20,9 +20,11 @@ export const makePlaceOrder = (relay: RelayManager) =>
     if (type !== 'BUY' && type !== 'SELL')
       return res.status(400).json({ message: 'type must be BUY or SELL' });
 
+    // Validate quantity: must be a positive integer
     if (!Number.isInteger(quantity) || quantity <= 0 || quantity > MAX_QUANTITY)
       return res.status(400).json({ message: `quantity must be a whole number between 1 and ${MAX_QUANTITY}` });
 
+    // Validate symbol: reasonable length, no injection chars
     if (typeof symbol !== 'string' || symbol.length > 20 || !/^[A-Z0-9:._-]+$/i.test(symbol))
       return res.status(400).json({ message: 'Invalid symbol format' });
 

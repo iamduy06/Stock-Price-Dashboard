@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { logRequest } from '../db';
 
+// Measures response time per request and writes to SQLite for latency stats.
 export function timingMiddleware(req: Request, res: Response, next: NextFunction): void {
   const start = process.hrtime.bigint();
 

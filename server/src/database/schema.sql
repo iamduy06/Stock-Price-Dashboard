@@ -47,6 +47,8 @@ CREATE TABLE public.watchlists (
     UNIQUE(user_id, symbol)
 );
 
+-- Executes a BUY or SELL atomically: updates balance, portfolio, and inserts order record.
+-- Returns JSONB with success flag, price, total_value, and new_balance.
 CREATE OR REPLACE FUNCTION place_order_atomic(
     p_user_id   UUID,
     p_symbol    VARCHAR,
@@ -57,6 +59,7 @@ CREATE OR REPLACE FUNCTION place_order_atomic(
 DECLARE
     v_total_value   NUMERIC;
     v_balance       NUMERIC;
+    v_new_balance   NUMERIC;
     v_existing_qty  INT;
     v_existing_avg  NUMERIC;
     v_new_qty       INT;
@@ -76,6 +79,7 @@ BEGIN
         END IF;
 
         UPDATE public.users SET balance = balance - v_total_value WHERE id = p_user_id;
+        v_new_balance := v_balance - v_total_value;
 
         SELECT id, quantity, average_price
         INTO v_portfolio_id, v_existing_qty, v_existing_avg
@@ -99,6 +103,7 @@ BEGIN
         END IF;
 
         UPDATE public.users SET balance = balance + v_total_value WHERE id = p_user_id;
+        v_new_balance := v_balance + v_total_value;
 
         v_new_qty := v_existing_qty - p_quantity;
         IF v_new_qty = 0 THEN
@@ -118,7 +123,8 @@ BEGIN
         'success',     true,
         'message',     'Order placed successfully',
         'price',       p_price,
-        'total_value', v_total_value
+        'total_value', v_total_value,
+        'new_balance', v_new_balance
     );
 END;
 $$ LANGUAGE plpgsql;

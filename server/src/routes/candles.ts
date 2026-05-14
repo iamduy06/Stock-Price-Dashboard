@@ -5,12 +5,11 @@ import { getCandlesWithCache, CandleRow } from '../db';
 const router = Router();
 
 const VALID_RESOLUTIONS = new Set(['1', '5', '15', '30', '60', 'D']);
-
-const VN_TICKER_RE    = /^[A-Z0-9]{1,10}$/;
+const VN_TICKER_RE    = /^[A-Z0-9]{1,10}$/; // blocks path separators and encoded sequences
 const CRYPTO_RE       = /^[A-Z0-9]{1,20}:[A-Z0-9]{1,20}$/;
 const US_TICKER_RE    = /^[A-Z]{1,10}$/;
-const MIN_TS          = 946684800;
-const MAX_TS          = 4102444800;
+const MIN_TS          = 946684800;   // 2000-01-01 UTC
+const MAX_TS          = 4102444800;  // 2100-01-01 UTC
 const MAX_RANGE_S     = 5 * 365 * 24 * 3600;
 
 function validateSymbol(raw: string): string | null {
@@ -67,7 +66,6 @@ const BINANCE_INTERVAL: Record<string, string> = {
 async function fetchBinanceFromApi(
   rawSymbol: string, resolution: string, from: number, to: number
 ): Promise<CandleRow[]> {
-
   const pair     = rawSymbol.includes(':') ? rawSymbol.split(':')[1] : rawSymbol;
   const interval = BINANCE_INTERVAL[resolution] ?? '1d';
 
@@ -75,6 +73,7 @@ async function fetchBinanceFromApi(
   let startMs = from * 1000;
   const endMs  = to   * 1000;
 
+  // max 1000 bars per Binance call; paginate up to 5 pages
   for (let page = 0; page < 5; page++) {
     const { data } = await axios.get('https://api.binance.com/api/v3/klines', {
       params: { symbol: pair, interval, startTime: startMs, endTime: endMs, limit: 1000 },
@@ -156,20 +155,17 @@ router.get('/:symbol', async (req: Request, res: Response) => {
     let candles: CandleRow[];
 
     if (rawSymbol.startsWith('VN:')) {
-
       const ticker = rawSymbol.slice(3);
       candles = await getCandlesWithCache(
         rawSymbol, String(resolution), fromTime, toTime,
         (f, t) => fetchVnFromApi(ticker, String(resolution), f, t)
       );
     } else if (rawSymbol.includes(':')) {
-
       candles = await getCandlesWithCache(
         rawSymbol, String(resolution), fromTime, toTime,
         (f, t) => fetchBinanceFromApi(rawSymbol, String(resolution), f, t)
       );
     } else {
-
       const token = process.env.FINNHUB_API_KEY ?? '';
       candles = await getCandlesWithCache(
         rawSymbol, String(resolution), fromTime, toTime,
