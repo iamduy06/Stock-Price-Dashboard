@@ -9,6 +9,7 @@ import { FinnhubClient } from './finnhub';
 import { TcbsClient } from './tcbs';
 import { RelayManager } from './relay';
 import { RawTrade } from './types';
+import { makeTradeRouter } from './modules/trade/trade.routes';
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ const relay = new RelayManager();
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: Date.now() }));
 app.get('/api/stats', (_req, res) => res.json(relay.getStats()));
+app.use('/api/trade', makeTradeRouter(relay));
 
 const finnhub = new FinnhubClient(process.env.FINNHUB_API_KEY ?? '');
 const tcbs = new TcbsClient();
