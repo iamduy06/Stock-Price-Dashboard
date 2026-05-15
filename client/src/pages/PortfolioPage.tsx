@@ -121,7 +121,6 @@ export default function PortfolioPage() {
                 </thead>
                 <tbody>
                   {portfolio?.portfolio.map((item) => {
-                    // Use live price from WS if available
                     const livePrice = stocks[item.symbol]?.price ?? item.current_price;
                     const liveValue = livePrice * item.quantity;
                     const livePnL = (livePrice - item.average_price) * item.quantity;

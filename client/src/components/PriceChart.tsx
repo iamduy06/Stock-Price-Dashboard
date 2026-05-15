@@ -30,12 +30,12 @@ const RESOLUTION_SECONDS: Record<Resolution, number> = {
 };
 
 const RESOLUTION_LOOKBACK: Record<Resolution, number> = {
-  '1':  7  * 24 * 3600,       // 7 days  (Yahoo Finance 1m limit)
-  '5':  60 * 24 * 3600,       // 60 days (Yahoo Finance 5m limit)
-  '15': 60 * 24 * 3600,       // 60 days
-  '30': 60 * 24 * 3600,       // 60 days
-  '60': 2  * 365 * 86400,     // 2 years
-  'D':  3  * 365 * 86400,     // 3 years
+  '1':  7  * 24 * 3600,       
+  '5':  60 * 24 * 3600,       
+  '15': 60 * 24 * 3600,       
+  '30': 60 * 24 * 3600,      
+  '60': 2  * 365 * 86400,   
+  'D':  3  * 365 * 86400,    
 };
 
 type Status = 'idle' | 'loading' | 'empty' | 'error';
@@ -121,7 +121,6 @@ export default function PriceChart({ symbol, resolution, latestTrade }: Props) {
 
         if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
 
-        // Yahoo Finance sometimes gap-fills with null/NaN — filter those out
         const valid = candles
           .filter(c =>
             c.open != null && c.high != null && c.low != null && c.close != null &&
@@ -190,7 +189,7 @@ export default function PriceChart({ symbol, resolution, latestTrade }: Props) {
     try {
       candleSeriesRef.current.update(current);
     } catch {
-      // throws if tick timestamp is before the last bar — ignore
+     
     }
   }, [resolution]);
 

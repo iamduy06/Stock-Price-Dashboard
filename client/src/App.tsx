@@ -12,7 +12,7 @@ function AppRoutes() {
   useStockWS();
   const { updateBalance, logout } = useStockStore();
 
-  // Syncs balance from server on startup to clear any stale/NaN value in localStorage
+  
   useEffect(() => {
     if (!getToken()) return;
     getMe()

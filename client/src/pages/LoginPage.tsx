@@ -28,7 +28,6 @@ export default function LoginPage() {
       saveSession(token, user);
       setUser(user);
 
-      // Load server watchlist and sync to store
       try {
         const serverList = await getServerWatchlist();
         if (serverList.length > 0) {
@@ -37,7 +36,7 @@ export default function LoginPage() {
           symbols.forEach(subscribeSymbol);
         }
       } catch {
-        // keep local watchlist if server fails
+
       }
 
       navigate('/');
