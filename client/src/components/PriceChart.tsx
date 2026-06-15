@@ -111,8 +111,9 @@ export default function PriceChart({ symbol, resolution, latestTrade }: Props) {
         const now = Math.floor(Date.now() / 1000);
         const from = now - RESOLUTION_LOOKBACK[resolution];
 
+        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
         const { data: candles } = await axios.get<CandleData[]>(
-          `/api/candles/${encodeURIComponent(symbol)}`,
+          `${API_BASE}/candles/${encodeURIComponent(symbol)}`,
           {
             params: { resolution, from, to: now },
             signal: controller.signal,
