@@ -14,6 +14,14 @@ CREATE TABLE public.users (
     created_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE public.stocks (
+    symbol          VARCHAR(20) PRIMARY KEY,
+    company_name    VARCHAR(100) NOT NULL,
+    reference_price NUMERIC(15, 2) NOT NULL,
+    ceiling_price   NUMERIC(15, 2) NOT NULL,
+    floor_price     NUMERIC(15, 2) NOT NULL
+);
+
 CREATE TABLE public.portfolios (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id       UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
